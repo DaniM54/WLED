@@ -28,9 +28,13 @@ float UsermodTemperature::readDallas() {
       case 0x28:  // DS1822
       case 0x3B:  // DS1825
       case 0x42:  // DS28EA00
-        result = (data[1]<<4) | (data[0]>>4);   // we only need whole part, we will add fraction when returning
+        /*result = (data[1]<<4) | (data[0]>>4);   // we only need whole part, we will add fraction when returning
         if (data[1] & 0x80) result |= 0xF000;   // fix negative value
-        retVal = float(result) + ((data[0] & 0x08) ? 0.5f : 0.0f);
+        retVal = float(result) + ((data[0] & 0x08) ? 0.5f : 0.0f);*/
+        result = (data[1] << 8) | data[0];      // kombiniere beide Bytes zu 16-Bit-Rohwert
+        if (result & 0x8000)                    // negatives Vorzeichen prüfen
+          result |= 0xFFFF0000;                // korrektes Vorzeichen für negatives int32_t
+        retVal = result / 16.0f;                // 12-Bit-Auflösung: jeder Schritt = 0.0625 °C
         break;
     }
   }
@@ -224,7 +228,7 @@ void UsermodTemperature::onMqttConnect(bool sessionPresent) {
   */
 void UsermodTemperature::addToJsonInfo(JsonObject& root) {
   // dont add temperature to info if we are disabled
-  if (!enabled) return;
+  // if (!enabled) return;
 
   JsonObject user = root["u"];
   if (user.isNull()) user = root.createNestedObject("u");
